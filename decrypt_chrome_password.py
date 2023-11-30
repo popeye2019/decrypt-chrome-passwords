@@ -33,6 +33,11 @@ def get_secret_key():
 def decrypt_payload(cipher, payload):
     return cipher.decrypt(payload)
 
+#MOI
+def encrypt_payload(cipher, payload):
+    return cipher.encrypt(payload)
+
+
 def generate_cipher(aes_key, iv):
     return AES.new(aes_key, AES.MODE_GCM, iv)
 
@@ -52,7 +57,26 @@ def decrypt_password(ciphertext, secret_key):
         print("%s"%str(e))
         print("[ERR] Unable to decrypt, Chrome version <80 not supported. Please check.")
         return ""
-    
+
+#MOI
+def encrypt_password(ciphertext, secret_key):
+    try:
+        #(3-a) Initialisation vector for AES decryption
+        initialisation_vector = ciphertext[3:15]
+        #(3-b) Get encrypted password by removing suffix bytes (last 16 bits)
+        #Encrypted password is 192 bits
+        encrypted_password = ciphertext[15:-16]
+        #(4) Build the cipher to decrypt the ciphertext
+        cipher = generate_cipher(secret_key, initialisation_vector)
+        encrypted_pass = encrypt_payload(cipher, encrypted_password)
+        encrypted_pass = encrypted_pass.decode()  
+        return encrypted_pass
+    except Exception as e:
+        print("%s"%str(e))
+        print("[ERR] Unable to encrypt, Chrome version <80 not supported. Please check à moi.")
+        return ""
+
+
 def get_db_connection(chrome_path_login_db):
     try:
         print(chrome_path_login_db)
@@ -62,8 +86,7 @@ def get_db_connection(chrome_path_login_db):
         print("%s"%str(e))
         print("[ERR] Chrome database cannot be found")
         return None
-        
-if __name__ == '__main__':
+def decrypt():
     try:
         #Create Dataframe to store passwords
         with open('decrypted_password.csv', mode='w', newline='', encoding='utf-8') as decrypt_password_file:
@@ -100,3 +123,34 @@ if __name__ == '__main__':
                     os.remove("Loginvault.db")
     except Exception as e:
         print("[ERR] %s"%str(e))
+def encrypt():
+    try:
+        with open('decrypted_password.csv', mode='r', newline='', encoding='utf-8') as decrypt_password_file:
+            csv_reader = csv.reader(decrypt_password_file, delimiter=',')
+            for row in csv_reader:
+                print (row)
+
+            #csv_reader.writerow(["index","url","username","password"])
+            #(1) Get secret key
+            secret_key = get_secret_key()
+            print ('Secret_key : ',secret_key)
+            folders = [element for element in os.listdir(CHROME_PATH) if re.search("^Profile*|^Default$",element)!=None]
+            for folder in folders:
+            	#(2) Get ciphertext from sqlite database
+                chrome_path_login_db = os.path.normpath(r"%s\%s\Login Data"%(CHROME_PATH,folder))
+                print ("chrome_path_login_db : ",chrome_path_login_db)
+                conn = get_db_connection(chrome_path_login_db)
+                print ("chrome conn: ",conn)  
+
+
+
+    except Exception as e:
+        print("[ERR] %s"%str(e))
+
+
+
+if __name__ == '__main__':
+    decrypt()
+    print ("######################## encrypt######")
+    encrypt()
+        
